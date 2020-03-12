@@ -195,6 +195,28 @@ detect_vmx_features(void)
         pr_info("Procbased Controls MSR: 0x%llx\n",
                 (uint64_t)(lo | (uint64_t)hi << 32));
         report_capability(procbased, 21, lo, hi);
+
+
+	//Secondary Proc-based controls--Cannot be set
+        rdmsr(IA32_VMX_PINBASED_CTLS, lo, hi);
+        pr_info("Secondary proc-based Controls MSR: 0x%llx\n",
+                (uint64_t)(lo | (uint64_t)hi << 32));
+        report_capability(procbased_2, 27, lo, hi);
+
+
+	//Exit controls
+        rdmsr(IA32_VMX_PINBASED_CTLS, lo, hi);
+        pr_info("Exit Controls MSR: 0x%llx\n",
+                (uint64_t)(lo | (uint64_t)hi << 32));
+        report_capability(exit_controls, 13, lo, hi);
+
+
+	//Entry controls
+        rdmsr(IA32_VMX_PINBASED_CTLS, lo, hi);
+        pr_info("Entry Controls MSR: 0x%llx\n",
+                (uint64_t)(lo | (uint64_t)hi << 32));
+        report_capability(entry_controls, 11, lo, hi);
+
 }
 
 /*
