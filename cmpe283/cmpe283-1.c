@@ -17,6 +17,7 @@
 #define IA32_VMX_EXIT_CTLS 0x483
 #define IA32_VMX_ENTRY_CTLS 0x484
 
+
 /*
 struct capability_info procbased[5] =
 {
@@ -53,7 +54,7 @@ struct capability_info pinbased[5] =
 	{ 7, "Process Posted Interrupts" }
 };
 
-struct capability_info procbased[21] =
+struct capability_info procbased[22] =
 {
 	{ 2, "Interrupt-window exiting" },
 	{ 3, "Use TSC offsetting" },
@@ -75,7 +76,8 @@ struct capability_info procbased[21] =
 	{ 28, "Use MSR bitmaps" },
 	{ 29, "MONITOR exiting" },
 	{ 30, "PAUSE exiting" },
-	{ 31, "Activate secondary controls" }
+	{ 31, "Activate secondary controls" },
+	{ 63, "Seconndary proc-based controls"}
 }; 
 
 
@@ -179,10 +181,11 @@ report_capability(struct capability_info *cap, uint8_t len, uint32_t lo,
  *
  * Detects and prints VMX capabilities of this host's CPU.
  */
-void
+void 
 detect_vmx_features(void)
 {
 	uint32_t lo, hi;
+
 
 	/* Pinbased controls */
 	rdmsr(IA32_VMX_PINBASED_CTLS, lo, hi);
@@ -191,28 +194,28 @@ detect_vmx_features(void)
 	report_capability(pinbased, 5, lo, hi);
 
 	//Proc-based controls
-	rdmsr(IA32_VMX_PINBASED_CTLS, lo, hi);
+	rdmsr(IA32_VMX_PROCBASED_CTLS, lo, hi);
         pr_info("Procbased Controls MSR: 0x%llx\n",
                 (uint64_t)(lo | (uint64_t)hi << 32));
-        report_capability(procbased, 21, lo, hi);
+        report_capability(procbased, 22, lo, hi);
 
 
 	//Secondary Proc-based controls--Cannot be set
-        rdmsr(IA32_VMX_PINBASED_CTLS, lo, hi);
+        rdmsr(IA32_VMX_PROCBASED_CTLS2, lo, hi);
         pr_info("Secondary proc-based Controls MSR: 0x%llx\n",
                 (uint64_t)(lo | (uint64_t)hi << 32));
         report_capability(procbased_2, 27, lo, hi);
 
 
 	//Exit controls
-        rdmsr(IA32_VMX_PINBASED_CTLS, lo, hi);
+        rdmsr(IA32_VMX_EXIT_CTLS, lo, hi);
         pr_info("Exit Controls MSR: 0x%llx\n",
                 (uint64_t)(lo | (uint64_t)hi << 32));
         report_capability(exit_controls, 13, lo, hi);
 
 
 	//Entry controls
-        rdmsr(IA32_VMX_PINBASED_CTLS, lo, hi);
+        rdmsr(IA32_VMX_ENTRY_CTLS, lo, hi);
         pr_info("Entry Controls MSR: 0x%llx\n",
                 (uint64_t)(lo | (uint64_t)hi << 32));
         report_capability(entry_controls, 11, lo, hi);
