@@ -4,6 +4,7 @@
 #include <linux/module.h>	/* Needed by all modules */
 #include <linux/kernel.h>	/* Needed for KERN_INFO */
 #include <asm/msr.h>
+#include <stdbool.h>
 
 #define MAX_MSG 80
 
@@ -17,20 +18,18 @@
 #define IA32_VMX_EXIT_CTLS 0x483
 #define IA32_VMX_ENTRY_CTLS 0x484
 
+//To check true VMX capabilities (on bit 55)
+#define IA32_VMX_BASIC 0x480
+
+//If true VMX capabilities are present
+#define IA32_VMX_TRUE_PINBASED_CTLS 0x48D
+#define IA32_VMX_TRUE_PROCBASED_CTLS 0x48E
+#define IA32_VMX_TRUE_EXIT_CTLS 0x48F
+#define IA32_VMX_TRUE_ENTRY_CTLS 0x490
+
 
 /*
-struct capability_info procbased[5] =
-{
-        { 0, "Interrupt-window exiting" },
-        { 3, "NMI Exiting" },
-        { 5, "Virtual NMIs" },
-        { 6, "Activate VMX Preemption Timer" },
-        { 7, "Process Posted Interrupts" }
-};
-*/
-
-/*
- * struct caapability_info
+ * struct capability_info
  *
  * Represents a single capability (bit number and description).
  * Used by report_capability to output VMX capabilities.
@@ -40,7 +39,13 @@ struct capability_info {
 	const char *name;
 };
 
+/*
+struct capability_info basic[1] =
+{
+	{ 55, "Check true VMX capabilities" }
 
+}
+*/
 /*
  * Pinbased capabilities
  * See SDM volume 3, section 24.6.1
@@ -77,7 +82,7 @@ struct capability_info procbased[22] =
 	{ 29, "MONITOR exiting" },
 	{ 30, "PAUSE exiting" },
 	{ 31, "Activate secondary controls" },
-	{ 63, "Seconndary proc-based controls"}
+	{ 63, "Secondary proc-based controls(bit 63)"}
 }; 
 
 
@@ -176,6 +181,24 @@ report_capability(struct capability_info *cap, uint8_t len, uint32_t lo,
 	}
 }
 
+bool
+check_true_VMX_capabilities(void) 
+{
+	uint32_t lo, hi, offset;
+	rdmsr(IA32_VMX_BASIC, lo, hi);
+	offset = 55 - 32;
+	if(hi & (1 << offset))
+	{
+		printk("True VMX Capabilities available");
+		return 1;
+	} else 
+	{
+		printk("True VMX capabilities not available");
+		return 0;
+	}
+
+}
+
 /*
  * detect_vmx_features
  *
@@ -185,7 +208,7 @@ void
 detect_vmx_features(void)
 {
 	uint32_t lo, hi;
-
+	
 
 	/* Pinbased controls */
 	rdmsr(IA32_VMX_PINBASED_CTLS, lo, hi);
@@ -222,6 +245,47 @@ detect_vmx_features(void)
 
 }
 
+detect_true_vmx_features(void)
+{
+	uint32_t lo, hi;
+	
+
+	/* Pinbased controls */
+	rdmsr(IA32_VMX_TRUE_PINBASED_CTLS, lo, hi);
+	pr_info("Pinbased Controls MSR True: 0x%llx\n",
+		(uint64_t)(lo | (uint64_t)hi << 32));
+	report_capability(pinbased, 5, lo, hi);
+
+	//Proc-based controls
+	rdmsr(IA32_VMX_TRUE_PROCBASED_CTLS, lo, hi);
+        pr_info("Procbased Controls MSR True: 0x%llx\n",
+                (uint64_t)(lo | (uint64_t)hi << 32));
+        report_capability(procbased, 22, lo, hi);
+
+
+	//Secondary Proc-based controls--Cannot be set
+        rdmsr(IA32_VMX_TRUE_PROCBASED_CTLS, lo, hi);
+        pr_info("Secondary proc-based Controls MSR True: 0x%llx\n",
+                (uint64_t)(lo | (uint64_t)hi << 32));
+        report_capability(procbased_2, 27, lo, hi);
+
+
+	//Exit controls
+        rdmsr(IA32_VMX_TRUE_EXIT_CTLS, lo, hi);
+        pr_info("Exit Controls MSR True: 0x%llx\n",
+                (uint64_t)(lo | (uint64_t)hi << 32));
+        report_capability(exit_controls, 13, lo, hi);
+
+
+	//Entry controls
+        rdmsr(IA32_VMX_TRUE_ENTRY_CTLS, lo, hi);
+        pr_info("Entry Controls MSR True: 0x%llx\n",
+                (uint64_t)(lo | (uint64_t)hi << 32));
+        report_capability(entry_controls, 11, lo, hi);
+
+}
+
+
 /*
  * init_module
  *
@@ -234,9 +298,14 @@ int
 init_module(void)
 {
 	printk(KERN_INFO "CMPE 283 Assignment 1 Module Start\n");
-
-	detect_vmx_features();
-
+	
+	if(check_true_VMX_capabilities()) 
+	{
+		detect_true_vmx_features();
+	} else 
+	{
+		detect_vmx_features();
+	}
 	/* 
 	 * A non 0 return means init_module failed; module can't be loaded. 
 	 */
