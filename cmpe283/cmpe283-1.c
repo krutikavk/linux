@@ -264,12 +264,12 @@ detect_true_vmx_features(void)
         report_capability(procbased, 22, lo, hi);
 
 
-	//Secondary Proc-based controls--Cannot be set
+	/*Secondary Proc-based controls--Cannot be set
         rdmsr(IA32_VMX_TRUE_PROCBASED_CTLS, lo, hi);
         pr_info("Secondary proc-based Controls MSR True: 0x%llx\n",
                 (uint64_t)(lo | (uint64_t)hi << 32));
         report_capability(procbased_2, 27, lo, hi);
-
+        */
 
 	//Exit controls
         rdmsr(IA32_VMX_TRUE_EXIT_CTLS, lo, hi);
