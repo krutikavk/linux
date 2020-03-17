@@ -245,6 +245,7 @@ detect_vmx_features(void)
 
 }
 
+void
 detect_true_vmx_features(void)
 {
 	uint32_t lo, hi;
