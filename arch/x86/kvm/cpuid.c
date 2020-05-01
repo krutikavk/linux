@@ -24,6 +24,7 @@
 #include "trace.h"
 #include "pmu.h"
 
+
 /*
  * Unlike "struct cpuinfo_x86.x86_capability", kvm_cpu_caps doesn't need to be
  * aligned to sizeof(unsigned long) because it's not accessed via bitops.
@@ -1034,16 +1035,113 @@ bool kvm_cpuid(struct kvm_vcpu *vcpu, u32 *eax, u32 *ebx,
 }
 EXPORT_SYMBOL_GPL(kvm_cpuid);
 
+/* changes for assignment 2 and 3 */
+uint32_t num_exits_all=0;
+EXPORT_SYMBOL(num_exits_all);
+
+uint32_t num_exits_single[2][69] = {
+        {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+        };
+EXPORT_SYMBOL(num_exits_single);
+
+atomic64_t exit_time_single[2][69] = {
+        {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}, {22}, {23}, {24}, {25}, {26}, {27}, {28}, {29}, {30}, {31}, {32}, {33}, {34}, {35}, {36}, {37}, {38}, {39}, {40}, {41}, {42}, {43}, {44}, {45}, {46}, {47}, {48}, {49}, {50}, {51}, {52}, {53}, {54}, {55}, {56}, {57}, {58}, {59}, {60}, {61}, {62}, {63}, {64}, {65}, {66}, {67}, {68}},
+	{{0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0} }
+        };
+EXPORT_SYMBOL(exit_time_single);
+
+void add_exit_time(uint64_t time_taken, u32 exit_reason) {
+        if (exit_reason < 69) {
+                atomic64_add(time_taken, &exit_time_single[1][exit_reason]);
+                //printk("Inside add_exit_time function!!!");
+        }
+}
+
+
+EXPORT_SYMBOL_GPL(add_exit_time);
+
+//new change
+atomic64_t exit_time_all={0};
+EXPORT_SYMBOL(exit_time_all);
+
+
 int kvm_emulate_cpuid(struct kvm_vcpu *vcpu)
 {
 	u32 eax, ebx, ecx, edx;
+
+	/* changes for assignment 2 and 3 */
+        uint32_t basic_exit_reason;
 
 	if (cpuid_fault_enabled(vcpu) && !kvm_require_cpl(vcpu, 0))
 		return 1;
 
 	eax = kvm_rax_read(vcpu);
 	ecx = kvm_rcx_read(vcpu);
-	kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, false);
+
+	
+	/* changes for assignment 2 and 3 */
+	
+
+        if(eax == 0x4FFFFFFF)
+	{
+                printk("eax leaf is 0x4fffffff, total number of exits are: %u", num_exits_all);
+                eax = num_exits_all;
+        } else if (eax == 0x4FFFFFFE) {			//new change
+
+		printk("Here");
+                //exit_time_all high bits ebx, low in ecx
+                //need to convert this into CPU cycles
+                ecx = atomic64_read(&exit_time_all) & 0xffffffff;
+                ebx = (atomic64_read(&exit_time_all) & 0xffffffff) >> 32;
+		printk("eax leaf is 0x4fffffff, total time spent processing all exits is %llu" , atomic64_read(&exit_time_all));
+	
+	}
+        else if(eax==0x4FFFFFFD)
+	{
+                if(ecx <69)
+		{
+                        basic_exit_reason = ecx;
+                        eax = num_exits_single[1][basic_exit_reason];
+                        ebx = 0x00000000;
+                        ecx = 0x00000000;
+                        edx = 0x00000000;
+                        printk("eax leaf is 0x4ffffffd, total number of exits for %u are: %u", basic_exit_reason, eax);
+                }
+		else 
+		{
+                        eax = 0x00000000;
+                        ebx = 0x00000000;
+                        ecx = 0x00000000;
+                        edx = 0xFFFFFFFF;
+                        printk("Value entered is not defined!");
+                        }
+        }
+        else if(eax == 0x4FFFFFFC) 
+	{
+                if(ecx < 69)
+		{
+                        eax = 0x00000000;
+                        basic_exit_reason = ecx;
+                        ebx = ((atomic64_read(&exit_time_single[1][basic_exit_reason]) & 0xffffffff) >> 32);
+                        ecx = atomic64_read(&exit_time_single[1][basic_exit_reason]) & 0xffffffff;
+                        edx = 0x00000000;
+                        printk("eax leaf is 0x4ffffffc, total time spent on exit number %u is: %llu", basic_exit_reason, atomic64_read(&exit_time_single[1][basic_exit_reason]));
+                }
+                else 
+		{
+                        eax = 0x00000000;
+                        ebx = 0x00000000;
+                        ecx = 0x00000000;
+                        edx = 0xFFFFFFFF;
+                        printk("Value entered is not defined!");
+                }
+        }
+        else 
+	{
+                kvm_cpuid(vcpu, &eax, &ebx, &ecx, &edx, true);
+        }
+
 	kvm_rax_write(vcpu, eax);
 	kvm_rbx_write(vcpu, ebx);
 	kvm_rcx_write(vcpu, ecx);
