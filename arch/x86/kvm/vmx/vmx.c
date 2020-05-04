@@ -5871,8 +5871,8 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu,
         uint64_t exit_time = 0;
         uint32_t temp_return_val = 0;
         num_exits_all++;
-        if(exit_reason < 69) {
-                num_exits_single[1][exit_reason] = num_exits_single[1][exit_reason] + 1;
+	if(exit_reason < 69) {
+		num_exits_single[1][exit_reason] = num_exits_single[1][exit_reason] + 1;
         }
         //printk("Inside vmx_handle_exit function. exit_reason: %d", exit_reason);
 
@@ -5917,9 +5917,6 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu,
 		vcpu->run->exit_reason = KVM_EXIT_FAIL_ENTRY;
 		vcpu->run->fail_entry.hardware_entry_failure_reason
 			= exit_reason;
-		/* changes for assignment 2 and 3 */
-                exit_time = rdtsc() - exit_start_time;
-                add_exit_time(exit_time, exit_reason);
 		return 0;
 	}
 
@@ -5985,45 +5982,21 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu,
 		goto unexpected_vmexit;
 #ifdef CONFIG_RETPOLINE
 	if (exit_reason == EXIT_REASON_MSR_WRITE) {
-		/* changes for assignment 2 and 3 */
-                exit_time = rdtsc() - exit_start_time;
-                add_exit_time(exit_time, exit_reason);
-
 		return kvm_emulate_wrmsr(vcpu);
 	}
 	else if (exit_reason == EXIT_REASON_PREEMPTION_TIMER){
-		/* changes for assignment 2 and 3 */
-                //printk("Inside EXIT_REASON_PREEMPTION_TIMER");
-                exit_time = rdtsc() - exit_start_time;
-                add_exit_time(exit_time, exit_reason);
 		return handle_preemption_timer(vcpu);
 	}
 	else if (exit_reason == EXIT_REASON_INTERRUPT_WINDOW) {
-		 /* changes for assignment 2 and 3 */
-                //printk("Inside EXIT_REASON_INTERRUPT_WINDOW");
-                exit_time = rdtsc() - exit_start_time;
-                add_exit_time(exit_time, exit_reason);
                 return handle_interrupt_window(vcpu);
 	}
 	else if (exit_reason == EXIT_REASON_EXTERNAL_INTERRUPT){
-		/* changes for assignment 2 and 3 */
-                //printk("Inside EXIT_REASON_EXTERNAL_INTERRUPT");
-                exit_time = rdtsc() - exit_start_time;
-                add_exit_time(exit_time, exit_reason);
 		return handle_external_interrupt(vcpu);
 	}
 	else if (exit_reason == EXIT_REASON_HLT) {
-		/* changes for assignment 2 and 3 */
-                //printk("Inside EXIT_REASON_HLT");
-                exit_time = rdtsc() - exit_start_time;
-                add_exit_time(exit_time, exit_reason);
 		return kvm_emulate_halt(vcpu);
 	}
 	else if (exit_reason == EXIT_REASON_EPT_MISCONFIG) {
-		 /* changes for assignment 2 and 3 */
-                //printk("Inside EXIT_REASON_EPT_MISCONFIG");
-                exit_time = rdtsc() - exit_start_time;
-                add_exit_time(exit_time, exit_reason);
 		return handle_ept_misconfig(vcpu);
 	}
 #endif
@@ -6039,7 +6012,6 @@ static int vmx_handle_exit(struct kvm_vcpu *vcpu,
 	//change 2
 	atomic64_add(exit_time, &exit_time_all);
         return temp_return_val;
-	//return kvm_vmx_exit_handlers[exit_reason](vcpu);
 
 unexpected_vmexit:
 	vcpu_unimpl(vcpu, "vmx: unexpected exit reason 0x%x\n", exit_reason);
